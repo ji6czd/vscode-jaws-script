@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { findCall, signatureParts } from './call';
+import { registerCompileCommand } from './compile';
 import { analyze, Block, CLOSER_LABEL, Declared } from './context';
 import { DIRECTIVE_RE, directiveFileItems, includedDeclarations } from './includes';
 import { KEYWORDS } from './keywords';
@@ -142,6 +143,8 @@ export function activate(context: vscode.ExtensionContext) {
         { triggerCharacters: ['(', ','], retriggerCharacters: [',', ')'] }
     );
     context.subscriptions.push(signatures);
+
+    registerCompileCommand(context);
 }
 
 export function deactivate() {}

@@ -14,6 +14,21 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "jawsScript.compile",
+        "title": "JAWS Script: Compile",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "jawsScript.compile",
+          "when": "resourceLangId == jaws-script"
+        }
+      ]
+    },
     "configuration": {
       "title": "JAWS Script",
       "properties": {
@@ -24,6 +39,11 @@
           },
           "default": [],
           "description": "Include で指定したファイルを探す追加のフォルダー。開いているファイルのフォルダー、ワークスペースのフォルダー、インストールされている JAWS のフォルダーは、この設定がなくても探します。"
+        },
+        "jawsScript.compilerPath": {
+          "type": "string",
+          "default": "",
+          "description": "JAWS のスクリプトコンパイラ(scompile.exe)のパス。空のときは、インストールされている JAWS(jawsScript.jawsVersion で指定したバージョン、なければ最新)から探します。"
         },
         "jawsScript.jawsVersion": {
           "type": "string",
