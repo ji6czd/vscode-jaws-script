@@ -3,6 +3,12 @@
   "displayName": "JAWS Script",
   "description": "JAWS Script language support for VS Code",
   "version": "0.0.1",
+  "publisher": "seiken-lab",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ji6czd/vscode-jaws-script.git"
+  },
   "engines": {
     "vscode": "^1.140.0"
   },
