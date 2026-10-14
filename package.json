@@ -14,6 +14,29 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "JAWS Script",
+      "properties": {
+        "jawsScript.includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Include で指定したファイルを探す追加のフォルダー。開いているファイルのフォルダー、ワークスペースのフォルダー、インストールされている JAWS のフォルダーは、この設定がなくても探します。"
+        },
+        "jawsScript.jawsVersion": {
+          "type": "string",
+          "default": "",
+          "description": "Include を探すときに使う JAWS のバージョン(例: 2026)。空のときは、インストールされている最新のバージョンを使います。"
+        },
+        "jawsScript.language": {
+          "type": "string",
+          "default": "",
+          "description": "Include を探すときに使う JAWS の言語フォルダー名(例: jpn、enu)。空のときは、VS Code の表示言語に合わせて自動で選びます。"
+        }
+      }
+    },
     "languages": [
       {
         "id": "jaws-script",
@@ -22,8 +45,7 @@
           "jss"
         ],
         "extensions": [
-          ".jss",
-          ".jsd"
+          ".jss"
         ]
       }
     ]
@@ -34,8 +56,8 @@
     "vscode:prepublish": "pnpm run compile"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^24.19.2",
     "@types/vscode": "^1.140.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }

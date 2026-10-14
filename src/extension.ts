@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { analyze, Block, CLOSER_LABEL, Declared } from './context';
+import { DIRECTIVE_RE, directiveFileItems, includedDeclarations } from './includes';
 import { KEYWORDS } from './keywords';
 
 function keywordItems(inBody: boolean): vscode.CompletionItem[] {
@@ -46,7 +47,10 @@ function declaredItems(declared: Declared[]): vscode.CompletionItem[] {
         }
         seen.add(key);
         const item = new vscode.CompletionItem(d.name, DECLARED_KIND[d.kind]);
-        item.detail = d.detail;
+        item.detail = d.source ? `${d.detail} · ${d.source}` : d.detail;
+        if (d.documentation) {
+            item.documentation = new vscode.MarkdownString(d.documentation);
+        }
         if (d.detail.endsWith('(local)')) {
             item.sortText = '1' + d.name;
         }
@@ -55,24 +59,21 @@ function declaredItems(declared: Declared[]): vscode.CompletionItem[] {
     return items;
 }
 
-function functionItems(): vscode.CompletionItem[] {
-    // TODO: .jsd パーサーから動的生成する
-    const sayString = new vscode.CompletionItem('SayString', vscode.CompletionItemKind.Function);
-    sayString.detail = 'void SayString(String sText, int nPunc)';
-    sayString.documentation = new vscode.MarkdownString('指定したテキストを読み上げます。');
-
-    const sayMessage = new vscode.CompletionItem('SayMessage', vscode.CompletionItemKind.Function);
-    sayMessage.detail = 'void SayMessage(String sLongMessage, String sShortMessage)';
-    sayMessage.documentation = new vscode.MarkdownString('メッセージを読み上げます。長いメッセージと短いメッセージを指定します。');
-
-    return [sayString, sayMessage];
-}
-
 export function activate(context: vscode.ExtensionContext) {
     const provider = vscode.languages.registerCompletionItemProvider(
         { language: 'jaws-script' },
         {
-            provideCompletionItems(document, position) {
+            async provideCompletionItems(document, position, _token, completionContext) {
+                const prefix = document.lineAt(position.line).text.slice(0, position.character);
+                const directive = DIRECTIVE_RE.exec(prefix);
+                if (directive) {
+                    return directiveFileItems(document, position, directive[1], directive[2]);
+                }
+                // 引用符やパス区切りで自動的に呼ばれたのは、ファイル名の補完のためだけ
+                if (completionContext.triggerCharacter) {
+                    return undefined;
+                }
+
                 const ctx = analyze(document, position);
                 if (ctx.suppressed) {
                     return undefined;
@@ -81,14 +82,19 @@ export function activate(context: vscode.ExtensionContext) {
                 const inBody = ctx.stack.some((b) => b === 'script' || b === 'function');
                 const items = keywordItems(inBody);
                 if (inBody) {
-                    items.push(...declaredItems(ctx.declared), ...functionItems());
+                    // 現在のファイルの名前を先に並べ、同名なら現在のファイルを優先する
+                    const included = await includedDeclarations(document);
+                    items.push(...declaredItems([...ctx.declared, ...included]));
                 }
                 if (ctx.stack.length > 0) {
                     items.push(...blockItems(ctx.stack[ctx.stack.length - 1]));
                 }
                 return items;
             },
-        }
+        },
+        '"',
+        '/',
+        '\\'
     );
     context.subscriptions.push(provider);
 }

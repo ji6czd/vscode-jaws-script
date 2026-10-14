@@ -8,6 +8,16 @@ export interface Declared {
     name: string;
     kind: 'variable' | 'constant' | 'function';
     detail: string;
+    /** Include / Use / Import したファイルから来た名前の場合、そのファイル名 */
+    source?: string;
+    /** 説明(Markdown) */
+    documentation?: string;
+}
+
+/** 行単位で読めるテキスト。vscode.TextDocument と、ファイルから読んだ文字列の両方を扱う */
+export interface LineSource {
+    lineCount: number;
+    lineAt(line: number): { text: string };
 }
 
 export interface Context {
@@ -264,8 +274,18 @@ function step(state: State, code: string, ln: number, rec: Recorder | null, drop
     }
 }
 
+/** ファイル全体から、グローバル変数・定数・関数の宣言を集める(ヘッダーファイル用) */
+export function scanDeclarations(source: LineSource): Declared[] {
+    const state: State = { stack: [], inMessages: false, scopeId: 0, header: undefined };
+    const rec: Recorder = { locals: [], globals: [], constants: [], functions: [] };
+    for (let ln = 0; ln < source.lineCount; ln++) {
+        step(state, maskLine(source.lineAt(ln).text).code, ln, rec, false);
+    }
+    return [...rec.globals, ...rec.constants, ...rec.functions];
+}
+
 /** ドキュメント全体を走査して、カーソル位置の文脈と参照できる名前を求める */
-export function analyze(document: vscode.TextDocument, position: vscode.Position): Context {
+export function analyze(document: LineSource, position: vscode.Position): Context {
     const state: State = { stack: [], inMessages: false, scopeId: 0, header: undefined };
     const rec: Recorder = { locals: [], globals: [], constants: [], functions: [] };
     let snapshot: { suppressed: boolean; stack: Block[]; scopeId: number } | undefined;
