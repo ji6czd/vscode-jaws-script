@@ -1,0 +1,41 @@
+{
+  "name": "vscode-jaws-script",
+  "displayName": "JAWS Script",
+  "description": "JAWS Script language support for VS Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.140.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:jaws-script"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "jaws-script",
+        "aliases": [
+          "JAWS Script",
+          "jss"
+        ],
+        "extensions": [
+          ".jss",
+          ".jsd"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "pnpm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "^1.140.0",
+    "typescript": "^5.9.3"
+  }
+}
