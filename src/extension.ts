@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { findCall, signatureParts } from './call';
 import { analyze, Block, CLOSER_LABEL, Declared } from './context';
 import { DIRECTIVE_RE, directiveFileItems, includedDeclarations } from './includes';
 import { KEYWORDS } from './keywords';
@@ -97,6 +98,50 @@ export function activate(context: vscode.ExtensionContext) {
         '\\'
     );
     context.subscriptions.push(provider);
+
+    const signatures = vscode.languages.registerSignatureHelpProvider(
+        { language: 'jaws-script' },
+        {
+            async provideSignatureHelp(document, position) {
+                const call = findCall(document, position);
+                if (!call) {
+                    return undefined;
+                }
+
+                // 補完と同じ優先順位で、同名の関数のうち先に宣言されたものを使う
+                const ctx = analyze(document, position);
+                const included = await includedDeclarations(document);
+                const key = call.name.toLowerCase();
+                const found = [...ctx.declared, ...included].find(
+                    (d) => d.kind === 'function' && d.params && d.name.toLowerCase() === key
+                );
+                if (!found) {
+                    return undefined;
+                }
+
+                const parts = signatureParts(found);
+                const signature = new vscode.SignatureInformation(
+                    parts.label,
+                    found.summary ? new vscode.MarkdownString(found.summary) : undefined
+                );
+                signature.parameters = (found.params ?? []).map(
+                    (p, i) =>
+                        new vscode.ParameterInformation(
+                            parts.params[i],
+                            p.documentation ? new vscode.MarkdownString(p.documentation) : undefined
+                        )
+                );
+
+                const help = new vscode.SignatureHelp();
+                help.signatures = [signature];
+                help.activeSignature = 0;
+                help.activeParameter = call.activeParam;
+                return help;
+            },
+        },
+        { triggerCharacters: ['(', ','], retriggerCharacters: [',', ')'] }
+    );
+    context.subscriptions.push(signatures);
 }
 
 export function deactivate() {}

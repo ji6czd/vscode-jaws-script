@@ -126,20 +126,25 @@ function parseEntries(text: string): Entry[] {
     return entries;
 }
 
-function signature(e: Entry): string {
-    if (e.kind === 'script') {
-        return `Script ${e.name}()`;
-    }
+/** 引数の表記。Optional は、最初に省略可能になる引数の前にだけ付ける */
+function paramLabels(e: Entry): string[] {
     let inOptional = false;
-    const params = e.params.map((p, i) => {
+    return e.params.map((p, i) => {
         const optional = p.optional && !inOptional ? 'Optional ' : '';
         inOptional = inOptional || p.optional;
         return `${optional}${p.type}${p.byRef ? ' ByRef' : ''} ${p.name || `arg${i + 1}`}`;
     });
-    return `${e.returnType || 'Void'} ${e.name}(${params.join(', ')})`;
 }
 
-function documentation(e: Entry): string {
+function signature(e: Entry): string {
+    if (e.kind === 'script') {
+        return `Script ${e.name}()`;
+    }
+    return `${e.returnType || 'Void'} ${e.name}(${paramLabels(e).join(', ')})`;
+}
+
+/** 概要・説明・戻り値(引数ごとの説明は含めない) */
+function summary(e: Entry): string {
     const blocks: string[] = [];
     if (e.synopsis) {
         blocks.push(`**${e.synopsis}**`);
@@ -149,6 +154,15 @@ function documentation(e: Entry): string {
     }
     if (e.returnType && e.returnDescription) {
         blocks.push(`**Returns** \`${e.returnType}\` ${e.returnDescription}`);
+    }
+    return blocks.join('\n\n');
+}
+
+function documentation(e: Entry): string {
+    const blocks: string[] = [];
+    const head = summary(e);
+    if (head) {
+        blocks.push(head);
     }
     if (e.params.length > 0) {
         const lines = e.params.map((p, i) => {
@@ -165,11 +179,19 @@ function documentation(e: Entry): string {
 
 /** .jsd のテキストを、補完用の宣言に変換する */
 export function parseJsd(text: string, source: string): Declared[] {
-    return parseEntries(text).map((e) => ({
-        name: e.name,
-        kind: 'function',
-        detail: signature(e),
-        documentation: documentation(e),
-        source,
-    }));
+    return parseEntries(text).map((e) => {
+        const labels = paramLabels(e);
+        return {
+            name: e.name,
+            kind: 'function',
+            detail: signature(e),
+            documentation: documentation(e),
+            summary: summary(e),
+            params:
+                e.kind === 'script'
+                    ? undefined
+                    : e.params.map((p, i) => ({ label: labels[i], documentation: p.description || undefined })),
+            source,
+        };
+    });
 }

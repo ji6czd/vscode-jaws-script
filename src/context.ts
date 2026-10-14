@@ -12,6 +12,16 @@ export interface Declared {
     source?: string;
     /** 説明(Markdown) */
     documentation?: string;
+    /** 概要と説明だけ(引数ヒントに使う。引数ごとの説明は params に持つ) */
+    summary?: string;
+    /** 関数の引数。スクリプトや変数には持たない。引数なしの関数は空配列 */
+    params?: ParamInfo[];
+}
+
+export interface ParamInfo {
+    /** `Optional Int ByRef iValue` のように、シグネチャにそのまま並べる表記 */
+    label: string;
+    documentation?: string;
 }
 
 /** 行単位で読めるテキスト。vscode.TextDocument と、ファイルから読んだ文字列の両方を扱う */
@@ -57,7 +67,7 @@ export const CLOSER_LABEL: Record<Block, string> = {
     foreach: 'EndForEach',
 };
 
-const RESERVED = new Set(KEYWORDS.map((k) => k.label.toLowerCase()));
+export const RESERVED = new Set(KEYWORDS.map((k) => k.label.toLowerCase()));
 
 const TYPES =
     'int|string|handle|object|variant|collection|intarray|stringarray|handlearray|objectarray|variantarray';
@@ -104,7 +114,7 @@ interface Recorder {
  * コメントと文字列の中身を空白に置き換える(長さは変えない)。
  * open は、行がコメントまたは閉じていない文字列で終わることを示す。
  */
-function maskLine(line: string): { code: string; open: boolean } {
+export function maskLine(line: string): { code: string; open: boolean } {
     let code = '';
     let i = 0;
     while (i < line.length) {
@@ -160,8 +170,17 @@ function finishHeader(state: State, rec: Recorder | null) {
     const params = open >= 0 ? h.text.slice(open + 1, close >= 0 ? close : undefined) : '';
 
     const keyword = h.kind === 'function' ? 'Function' : 'Script';
-    const signature = `${h.prefix ? h.prefix + ' ' : ''}${keyword} ${nameMatch[1]}(${params.replace(/\s+/g, ' ').trim()})`;
-    rec.functions.push({ name: nameMatch[1], kind: 'function', detail: signature });
+    const labels = params
+        .split(',')
+        .map((p) => p.replace(/\s+/g, ' ').trim())
+        .filter((p) => p.length > 0);
+    const signature = `${h.prefix ? h.prefix + ' ' : ''}${keyword} ${nameMatch[1]}(${labels.join(', ')})`;
+    rec.functions.push({
+        name: nameMatch[1],
+        kind: 'function',
+        detail: signature,
+        params: h.kind === 'function' ? labels.map((label) => ({ label })) : undefined,
+    });
 
     for (const m of params.matchAll(DECL_RE)) {
         if (!RESERVED.has(m[2].toLowerCase())) {
